@@ -7,95 +7,57 @@
 /*----------------------------------------------
 Constructor for LDGM. No need to say more about it.
   ------------------------------------------------*/
-LDGM:: LDGM(int v1, int c1, int v2, int c2, int cc){ 
-    dv1 = v1;
-    dc1 = c1;
+LDGM:: LDGM(int v2, int c2, int cc){ 
     dv2 = v2;
     dc2 = c2;
     c   = cc;
     
-    m  = dv2*c;         // # of check nodes for LDGM.
-    n = dc2*c;          // # of variable nodes for LDPC
-    m1 = n*dv1/dc1;     // #of check-nodes in LDPC
-    e1 = dv1*n;         // # of edges in LDPC partm 
-    e2 = dv2*n;          //# of edges for LDGM
-    e  = e1+e2;            // Total # of edges
+    m  = dv2*c;           // # of check nodes for LDGM.
+    n  = dc2*c;          // # of variable nodes for LDGM 
+    e  = dv2*n;          //# of edges for LDGM
 
     E.resize(e + 1);
     U.resize(n);
    
-    //Vcon=[reshape(1:e1,dv1,[])' reshape(e1+1:e,dv2,[])']; % variable-node connections
+    //Vcon=[reshape(1:e,dv2,[])]; % variable-node connections
     for(int i = 0; i <n; i++){
-      vector<int> row(dv1 + dv2, 0);
+      vector<int> row(dv2, 0);
       Vcon.push_back(row);	
     }
 
-    //Vcon(: , 1: dv1) = reshape(1: e1, dv1, [])
+    //Vcon(: , 1: dv2) = reshape(1: e, dv2, [])
     int index = 1;
     for(int i = 0; i < n; i++)
-      for(int j = 0; j < dv1; j++)
+      for(int j = 0; j < dv2; j++)
 	Vcon[i][j] = index++;
     
-    
-    //Vcon(:, dv1 + 1: dv) = e1 + reshape(1: e2, dv2, [])
-    for(int i = 0; i < n; i++)
-      for(int j = dv1; j < dv1 + dv2; j++)
-	Vcon[i][j] = index++;
-    
-   
-    for(int i = 0; i < m1; i++){
-      vector<int>row(dc1, 0);
-      Ccon1.push_back(row);
-    }
     
     for(int i = 0; i < m; i++){
       vector<int>row(dc2, 0);
       Ccon2.push_back(row);
     }
     
-    //Ccon1=reshape(randperm(e1),[],dc1); % check-node connections in LDPC
-    vector<int>randomVector(e1);
-    for(int i = 0; i < e1; i++)
+    //Ccon2=reshape(randperm(e1),[],dc2); % check-node connections in LDPC
+    vector<int>randomVector(e);
+    for(int i = 0; i < e; i++)
       randomVector[i] = i + 1;
 
     random_shuffle(randomVector.begin(), randomVector.end());
     index = 0;
-    for(int i = 0; i < m1; i++)
-      for(int j = 0; j < dc1; j++)
-      	Ccon1[i][j] = randomVector[index++];
-	
-
-   
-    vector<int>randomVector1(e2);
-    for(int i = 0; i < e2; i++)
-      randomVector1[i] = i + 1 + e1;
-    
-    //Ccon2=reshape(e1+randperm(e2),[],dc2);
-    random_shuffle(randomVector1.begin(), randomVector1.end());
-
-    index = 0;
     for(int i = 0; i < m; i++)
       for(int j = 0; j < dc2; j++)
-      	Ccon2[i][j] = randomVector1[index++];	
+      	Ccon2[i][j] = randomVector[index++];
+		
     
     //print out for debugging
     /*cout<<"Vcon:"<<endl;
     for(int i = 0; i < n; i++){
-      for(int j = 0; j < dv1 + dv2; j++)
+      for(int j = 0; j < dv2; j++)
     	cout<<Vcon[i][j]<<" ";
       cout<<endl;
     }
     cout<<endl;
-    
-    cout<<"Ccon1:"<<endl;
-    for(int i = 0; i < m1; i++){
-      for(int k = 0; k < dc1; k++){
-    	cout<<Ccon1[i][k]<<" ";
-      }
-      cout<<endl;
-    }
-    cout<<endl;
-   
+       
     cout<<"Ccon2: "<<endl;
     for(int i = 0; i < m; i++){
       for(int k = 0; k < dc2; k++){
@@ -108,14 +70,14 @@ LDGM:: LDGM(int v1, int c1, int v2, int c2, int cc){
 FUNCTIONS:
            variableUpdate()
 DESCRIPTION:
-           E(Vcon)=repmat(sum(E(Vcon),2),1,dv1+dv2)-E(Vcon);
+           E(Vcon)=repmat(sum(E(Vcon),2),1,dv2)-E(Vcon);
 PARAMETERS:
       INPUT:
           --None
       OUTPUT:
           --Update E based on density evolution rule for variable,
 	   the updated rule in matlab language is
-            E(Vcon)=repmat(sum(E(Vcon),2),1,dv1+dv2)-E(Vcon);
+            E(Vcon)=repmat(sum(E(Vcon),2),1,dv2)-E(Vcon);
 RETURN VALUES:
         NONE
   -----------------------------------------------------------*/
@@ -135,7 +97,7 @@ FUNCTION:
          checkUpdateLDGM(unordered_set<int>DeletedVariable, double beta, vector<int>x)
 DESCRIPTION:
             Aref's paper equation 20.
-            E(Vcon(MDEL,dv1+1:dv))=Inf; 
+            E(Vcon(MDEL,dv2))=Inf; 
             E(Ccon2)=(repmat(((-1).^x)*tanh(beta),1,dc2)).*GenProd(E(Ccon2),beta);
             E(Ccon2)=(1/beta)*atanh(E(Ccon2)); 
 PARAMETERS:
@@ -146,7 +108,7 @@ PARAMETERS:
         OUTPUT:
 	   Update E. The update rule in matlab language is
      
-	    E(Vcon(MDEL,dv1+1:dv))=Inf; 
+	    E(Vcon(MDEL,dv2))=Inf; 
             E(Ccon2)=(repmat(((-1).^x)*tanh(beta),1,dc2)).*GenProd(E(Ccon2),beta);
             E(Ccon2)=atanh(E(Ccon2)),
 	    
@@ -163,12 +125,12 @@ PARAMETERS:
   -------------------------------------------------------------*/
 void LDGM:: checkUpdateLDGM(unordered_set<int>DeletedVariable, double beta, vector<int>x){
   /*------------------------------
-    first step is for deleted edgeds connecting to LDPC check node and set their values as infinity.
-  i.e., this step is corresponding to E(Vcon(MDEL,dv1+1:dv))=Inf;
+    first step is for deleted edgeds connecting to LDGM check node and set their values as infinity.
+  i.e., this step is corresponding to E(Vcon(MDEL,dv2))=Inf;
   --------------------------------*/
   for(auto it = DeletedVariable.begin(); it != DeletedVariable.end(); it++){
     int index = *it;
-    for(int i = dv1; i < dv1 + dv2; i++)
+    for(int i = 0; i < dv2; i++)
 	E[Vcon[index][i]] =  DBL_MAX;
   }
   /*-------------------------------------------------
@@ -187,87 +149,32 @@ void LDGM:: checkUpdateLDGM(unordered_set<int>DeletedVariable, double beta, vect
 	  
 	//the following part is to implement -1^x_i*tanh(beta)
 	double tempPow = x[a] == 0?  tanh(beta): -1.0*tanh(beta);
-	
 	//the following part is to implement 1/beta*atanh((repmat(((-1).^x)*tanh(beta),1,dc2)).*GenProd(E(Ccon2),1))
 	E[Ccon2[a][i]] = atanh(tempPow*temp)/beta;
     }//end of for(i..)
   }//end of for(a...)
 }
-/*------------------------------------------------
-FUNCTION:
-        void checkUpdateLDPC(unordered_set<int>DeletedVariable, double beta)
-DESCRIPTION:
-        Belief propagation check node update form for LDPC.
-PARAMETERS:
-        INPUT:
-	    DeletedVariable--deleted variable node set
-	    beta--
-	OUTPUT:
-	    Update E based on the usual update rule (the rule in matlab language is 
-	    E(Vcon(MDEL,1:dv1))=repmat(((-1).^UD(MDEL))*Inf,1,dv1);
-            E(Ccon1)=atanh(GenProd(E(Ccon1),beta))/beta;
-            E(E>20)=20; E(E<-20)=-20;)
-RETURN VALUE:
-         NONE
-  -------------------------------------------------*/
-void LDGM:: checkUpdateLDPC(unordered_set<int>DeletedVariable, double beta){
-  //the first step is E(Vcon(MDEL,1:dv1))=repmat(((-1).^UD(MDEL))*Inf,1,dv1);
-  for(auto it = DeletedVariable.begin(); it != DeletedVariable.end(); it++){
-    int index = *it;
-    for(int degree = 0; degree < dv1; degree++)
-      E[Vcon[index][degree]] = U[index] == 0? DBL_MAX: -1.0*DBL_MAX;
-  }
-  
-  //the second step is  E(Ccon1)=atanh(GenProd(E(Ccon1),beta));
-  vector<double>copyE(E);
-  for(int check = 0; check < Ccon1.size(); check++){
-    for(int degree = 0; degree < Ccon1[0].size(); degree++){
-	 E[Ccon1[check][degree]] = 1.0;
-	for(int d = 0; d < Ccon1[0].size(); d++)
-	  if(degree != d)
-	    E[Ccon1[check][degree]] *= tanh(beta*copyE[Ccon1[check][d]]);
-	E[Ccon1[check][degree]] = atanh(E[Ccon1[check][degree]])/beta;
-    }//end of for(degree)
-  }//end of for(check)
-  
-    //set the threshold
-  for(int i = 0; i < E.size(); i++){
-    if(E[i] > 20.0) E[i] = 20.0;
-    if(E[i] < -20.0) E[i] = -20.0;
-  }
-}
-
 /*----------------------------------------
 FUNCTION:
-       double computeMaxMarginal(double beta)
+       double change(vector<double>Previous)
 DESCRIPTION:
-            bt=beta*sum(E(Vcon),2);
-            B=max(abs(bt));
+            equation 23 of aref's paper 
+       
 PARAMETERS:
           INPUT:
-	    beta--
-	    and Need Vcon and E
+	    E-- as in the class
+	    Previous--previous e
           OUTPUT:
-	     B as described.
+	     |E|^{-1} \sum{|Previous[i] - E[i]|}
 RETURN VALUES
         B
   ------------------------------------------*/
-double LDGM:: computeMaxMarginal(double beta){
-   vector<double>message(n, 0.0);
-  //This part is to implement, bt=sum(E(Vcon),2);
-  for(int i = 0; i < n; i++)
-      for(int degree = 0; degree < Vcon[0].size(); degree++)
-	  message[i] += E[Vcon[i][degree]];
-  
-  for(int i = 0; i < n; i++)
-    message[i] *= beta;
-  
-  double ret = -0.1;
-  for(int i = 0; i < n; i ++)
-    if(ret < abs(message[i]))
-      ret = abs(message[i]);
-  
-  return ret;
+double LDGM:: Change(vector<double> Previous){
+  double ret = 0.0;
+
+  for(int i = 1; i < E.size(); i++)
+    ret += abs(Previous[i] - E[i]);
+  return ret/e;
 }
 /*--------------------------------------
 FUNCTION:
@@ -285,23 +192,20 @@ PARAMETERS:
 void LDGM::Decrimation(unordered_set<int>&DeletedVariable, double beta){
   vector<double>message(n, 0.0);
   //This part is to implement, bt=sum(E(Vcon),2);
-  for(int i = 0; i < n; i++){
-      for(int degree = 0; degree < Vcon[0].size(); degree++){
+  for(int i = 0; i < n; i++)
+      for(int degree = 0; degree < Vcon[0].size(); degree++)
 	  message[i] += E[Vcon[i][degree]];
-      }
-  }
 
   srand(time(NULL));
   
   //this is to implement  [B,i]=max(abs(bt(ND)));
   int index = 0;
   double tempMax = 0.0;
-  for(int i = 0; i < n; i++){
+  for(int i = 0; i < n; i++)
     if(tempMax < abs(message[i]) && DeletedVariable.find(i) == DeletedVariable.end()){
       tempMax = abs(message[i]);
       index = i;
     }
-  }
 
   //cout<<"max is "<<tempMax<<" and index is "<<index<<endl;
   //from the underlying ensemble, we choose a node uniformly. From Aref's paper, i.e., underline eq. 25. 
@@ -331,101 +235,6 @@ void LDGM::Decrimation(unordered_set<int>&DeletedVariable, double beta){
     DeletedVariable.insert(index);
   }
 }
-// /*----------------------------------------------------------------------------------
-// FUNCTION:
-//         bool ParityError(unordered_set<int>&DeletedVariable)
-// DESCRIPTION:
-//         During the encoding process, we check whether the current result meets the LDPC check constraints or not.
-// PARAMETERS:
-//         INPUTS:
-// 	    U--as in the class
-// 	    DeletedVariable--deleted variable set
-// 	    VCon--variable node connections
-// 	    Ccon1--check node connections of LDPC
-// 	OUPUT:
-// 	    indicate for the current intermediate results, the LDPC check constraints are satisfied or not.
-// RETURN VALUES:
-//         TRUE/FALSE
-//   -----------------------------------------------------------------------------------*/
-// bool LDGM:: ParityError(unordered_set<int>&DeletedVariable){
-//   vector<int>Edge(es, 0);
-  
-//   /*--------------------
-//    E=zeros(1,max(Vcon(:)));
-//   E(Vcon(MDEL,:))=1;
-//   ------------------------*/
-//   for(auto it = DeletedVariable.begin(); it != DeletedVariable.end(); it++){
-//     int index = *it;
-//     //for those edges determined, we set to 1: E(Vcon(MDEL,:))=1;
-//     for(int degree = 0; degree < Vcon[0].size(); degree++){
-//       Edge[Vcon[index][degree]] = 1; 
-//     }
-//   }
-  
-//   //this part is C1=sum(E(Ccon1),2)==size(Ccon1,2);
-//   vector<int>Degree(Ccon1.size(), 0);
-//   for(int index = 0; index < Ccon1.size(); index ++){
-//     for(int degree = 0; degree < Ccon1[0].size(); degree++){
-//       if(Edge[Ccon1[index][degree]])
-// 	Degree[index]++;
-//     } 
-//   }
-  
-//   //This part is to implement, E(Vcon(MDEL,:))=repmat(UD(MDEL),1,size(Vcon,2));
-//    vector<int>edge(es, 0);
-//    for(auto it = DeletedVariable.begin(); it != DeletedVariable.end(); it ++){
-//      int index = *it;
-//      for(int degree = 0; degree < Vcon[0].size(); degree++){
-//        //if(Vcon[index][degree] != es + 1)
-// 	 edge[Vcon[index][degree]] = U[index];
-//      }
-//    }
-  
-//    for(int i = 0; i < Ccon1.size(); i++){
-//      if(Degree[i] == Ccon1[0].size()){
-//        int res = edge[Ccon1[i][0]];
-//        for(int degree = 1; degree < Ccon1[0].size(); degree ++){
-// 	 res += edge[Ccon1[i][degree]];
-//        }
-//        if(res != 0){
-// 	 //cout<<"Parity check constraints are invalid"<<endl;
-// 	 return false;				
-//        }
-//      }
-//    }
-//    //cout<<"Parity check constraints are valid "<<endl;
-//    return true;
-// }
-// /*-----------------------------------------------------------------------------------
-// FUNCTION:
-//         bool LDPCCheck()
-// DESCRIPTION:
-//         Check to see whether LDPC checks are satisfied or not. If yes, return ture; otherwise, return false;
-// PARAMETERS:
-//         INPUT:
-// 	    U--as in the class
-// 	OUTPUT:
-// 	    To see whether LDPC checks are met up or not.
-// RETURN VALUE:
-//         True or false
-//   -----------------------------------------------------------------------------------*/
-// bool LDGM:: LDPCCheck(){
-//   vector<int>edge(es, 0);
-//   for(int i = 0; i < Vcon.size(); i++){
-//     for(int degree = dv1; degree < dv1 + dv2; degree++){
-//     edge[Vcon[i][degree]] = U[i];
-//     }
-//   }
-
-//    for(int i = 0; i < Ccon1.size(); i++){
-//        int res = edge[Ccon1[i][0]];
-//        for(int degree = 1; degree < Ccon1[0].size(); degree ++)
-// 	 res += edge[Ccon1[i][degree]];
-//        if(res != 0)
-// 	 return false;
-//    }
-//    return true;
-// }
 /*------------------------------------------------
 FUNCTION:
       vector<int>obtainLDGMCheck(vector<int>variable)
@@ -485,17 +294,17 @@ void LDGM:: printE(){
 FUNCTION:
 	double rate()
 DESCRIPTION:
-	Compute the rate of the WEM, which is dv1/dv2*(dc2/dc1)
+	Compute the rate of the WEM, which is m/n
 PARAMETERS:
 	INPUT: 
-	   dv1, dv2, dc1, dc2
+	   m, n as the class variables
         OUTPUT:
 	   rate
 RETURN VALUE
 	rate
 -----------------------------------------------*/
  double LDGM:: rate(){
-   return (double)dc2/dv2 *(1 - (double) dv1/dc1);
+   return (double)m/n;
 }
 /*-----------------------------------------------
 FUNCTION:
@@ -515,15 +324,16 @@ double LDGM::theoreticalRewritingCost(double rate){
 }
 /*---------------------------------------------------
 FUNCTION:
-       double runExperiment(int experimentNum, double beta)
+       double runExperiment(int experimentNum, double beta, double e)
 DESCRIPTION:
        Given the number of iterations we have to run, run 
        the experiment and the return value is the average rewriting cost.
 PARAMETERS:
        INPUT:
            beta--inverse temperature.
+	   ee   -- as the variable in equation 23
   ----------------------------------------------------*/
-double LDGM:: runExperiment(int experimentNum, double beta){
+double LDGM:: runExperiment(int experimentNum, double beta, double ee){
   double res = 0.0, Rate = rate(), cost = theoreticalRewritingCost(1 - Rate);
 
 
@@ -531,6 +341,7 @@ double LDGM:: runExperiment(int experimentNum, double beta){
   for(int iteration = 0; iteration < experimentNum;   iteration++){
     cout<<"experiment "<<iteration<<endl;
 
+    //generate a beroulli symmetric source word x
     vector<int>x(m);
     for(int i = 0; i < m; i++)
       x[i] = rand()%2;
@@ -539,31 +350,18 @@ double LDGM:: runExperiment(int experimentNum, double beta){
     fill_n(U.begin(), n, 0);
     fill_n(E.begin(), e + 1, 0.0);
 
-    /*cout<<"initial values for vector x is "<<endl;
-    for(int i = 0; i < m; i++)
-      cout<<x[i]<<" ";
-    cout<<endl;*/
-
     unordered_set<int>DeletedVariable;
     
     for(int count = 0; count < n; count ++){
-      if(count % 1000 == 0)
+      if(count % 100 == 0)
         cout<<"count now is "<<count<<" and n is "<<n<<endl;
-      //for each bit, run a couple of times.10 is suggested by Aref.
+	vector<double>previous(E);
+      //for each bit, run a couple of times or equation 23 does not hold. 10 is suggested by Aref.
       for(int i = 0; i < 10; i++){
-	//cout<<"iteration  "<<i<<endl;
 	variableUpdate();
-	//cout<<"after variable update"<<endl;
-	//printE();
-
 	checkUpdateLDGM(DeletedVariable, beta, x);
-	//cout<<"after check update of LDGM"<<endl;
-	//printE();
-
-	checkUpdateLDPC(DeletedVariable, beta);
-        //cout<<"after check update of LDPC"<<endl;
-	//printE();
-	}
+        if(Change(previous) >= ee) break;
+      }
       
       /*E(Vcon(MDEL,:))=0;*/
       for(auto it = DeletedVariable.begin(); it != DeletedVariable.end();  it ++){
@@ -578,6 +376,5 @@ double LDGM:: runExperiment(int experimentNum, double beta){
       res += rewritingCost(x, obtainLDGMCheck(U));
       if(iteration%1==0) cout<<" So far average rewriting cost is "<<res/(1+iteration)<<", rate is "<<Rate<<"   and theoretical value is "<<cost<<endl;
  }//end for for(... experimentNum ...)
-  
   return res/experimentNum;
 }

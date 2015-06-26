@@ -2,7 +2,7 @@
 #include"ldgm.hpp"
 
 int main(){
-  LDGM ldgm(3, 6, 6, 3, 40000);
-  ldgm.runExperiment(100, 1.00);
+  LDGM ldgm(6, 3, 4000);
+  ldgm.runExperiment(100, 1.00, 0.01);
   return 1;
 }
