@@ -41,16 +41,22 @@ LDGM:: LDGM(int v2, int c2, int cc){
     vector<int>randomVector(e);
     for(int i = 0; i < e; i++)
       randomVector[i] = i + 1;
-
+    
+    srand(time(0));
     random_shuffle(randomVector.begin(), randomVector.end());
     index = 0;
     for(int i = 0; i < m; i++)
       for(int j = 0; j < dc2; j++)
       	Ccon2[i][j] = randomVector[index++];
 		
-    
+    /*Ccon2[0][0] = 5; Ccon2[0][1] = 11; Ccon2[0][2] = 17;
+    Ccon2[1][0] = 4; Ccon2[1][1] = 10; Ccon2[1][2] = 1;
+    Ccon2[2][0] = 12; Ccon2[2][1] = 7; Ccon2[2][2] = 2;
+    Ccon2[3][0] = 3; Ccon2[3][1] = 18; Ccon2[3][2] = 14;
+    Ccon2[4][0] = 9; Ccon2[4][1] = 6; Ccon2[4][2] = 16;
+    Ccon2[5][0] = 8; Ccon2[5][1] = 13; Ccon2[5][2] = 15;
     //print out for debugging
-    /*cout<<"Vcon:"<<endl;
+    cout<<"Vcon:"<<endl;
     for(int i = 0; i < n; i++){
       for(int j = 0; j < dv2; j++)
     	cout<<Vcon[i][j]<<" ";
@@ -178,7 +184,7 @@ double LDGM:: Change(vector<double> Previous){
 }
 /*--------------------------------------
 FUNCTION:
-       void Decrimation(unordered_set<int>DeletedVariable, double beta)
+       int Decrimation(unordered_set<int>DeletedVariable, double beta)
 DESCRIPTION:
        Decrimation process, and the details can be referred to algorithm 1 
        of Aref's paper.
@@ -188,8 +194,10 @@ PARAMETERS:
 	  beta  ---
        OUTPUT:
           Determine a deleted variable node, add it to the DeletedVariable and storage the value in U
+RETURN VALUES:
+        return decrimated index
   ----------------------------------------*/
-void LDGM::Decrimation(unordered_set<int>&DeletedVariable, double beta){
+int LDGM::Decrimation(unordered_set<int>&DeletedVariable, double beta){
   vector<double>message(n, 0.0);
   //This part is to implement, bt=sum(E(Vcon),2);
   for(int i = 0; i < n; i++)
@@ -221,59 +229,69 @@ void LDGM::Decrimation(unordered_set<int>&DeletedVariable, double beta){
      else
        U[temp[index]] = 1;
       //set V_{dec} = V_{dec} U{i}
+     //cout<<"choose "<<temp[index]<<" and set to "<<U[temp[index]]<<endl;;
       DeletedVariable.insert(temp[index]);
+      return temp[index];
   }
   else{
     /*------------
       set u_{i^*} to 0 or 1 with probability (1 + tanh(beta*m_{i^*}))/2 or (1 - tanh(beta*m_{i^*})/2, i.e., randomized decision from Aref's paper
       -------------*/
-    if((double)rand()/(double)RAND_MAX <= (1 + tanh(beta*message[index]))/2)
-      U[index] = 0;
+    vector<int>Max;
+    for(int i = 0; i < n; i++){
+      if(abs(message[i]) == tempMax)
+	Max.push_back(i);
+    }
+    index = rand()%Max.size();
+    if((double)rand()/(double)RAND_MAX <= (1 + tanh(beta*message[Max[index]]))/2)
+      U[Max[index]] = 0;
     else
-      U[index] = 1;
+      U[Max[index]] = 1;
     //set V_{dec} = V_{dec} U{i}
-    DeletedVariable.insert(index);
+    //cout<<"choose "<<Max[index]<<" and set to "<<U[Max[index]]<<endl;
+    DeletedVariable.insert(Max[index]);
+    return Max[index];
   }
 }
 /*------------------------------------------------
 FUNCTION:
-      vector<int>obtainLDGMCheck(vector<int>variable)
+      void updatey(vector<int>&x, int index, int value)
 DESCRIPTION:
-      Obtain LDGM check nodes based on LDGM variable nodes.
+      update y based on the newly obtain value of bit index
 PARAMETERS:
       INPUT:
-          variable--LDGM variable nodes.
+          x --
+	  index--bit index
+	  value -- bit value
       OUTPUT:
-          LDGM variable nodes.
+          updated LDGM check nodes.
 RETURN VALUE:
-      A vector of interger indicating the LDGM variable nodes.
+      A vector of interger indicating the LDGM check nodes.
    --------------------------------------------------*/
- vector<int> LDGM:: obtainLDGMCheck(vector<int>variable){
-  vector<int>check(m, 0);
-  vector<int>edges(e + 1, 0);
-  //from the variable nodes of LDGM, updating the edges
-  for(int i = 0; i < Vcon.size(); i++)
-    for(int degree = 0; degree < Vcon[0].size(); degree++)
-	edges[Vcon[i][degree]] = variable[i];
-    
+void LDGM:: updatey(vector<int>&x, int index,  int value){
+  if(value == 0) return;
   
-  //from the check nodes of LDGM, obtain the check node values.
-  for(int i = 0; i < Ccon2.size(); i++)
-    for(int degree = 0; degree < Ccon2[0].size(); degree++)
-	check[i] = (check[i] + edges[Ccon2[i][degree]])%2;
-  
-  return check;
+  unordered_set<int>edges;
+  for(int i = 0; i < dv2; i++)
+    edges.insert(Vcon[index][i]);
+
+  for(int i = 0; i < m; i++){
+    for(int d = 0; d < dc2; d++){
+      if(edges.find(Ccon2[i][d]) != edges.end())
+	x[i] = (x[i] + 1)%2;
+    }
+  }
 }
 /*-------------------------------------------------
 FUNCTION:
-     double rewritingCost(vector<int> x, vector<int> y)
+     double rewritingCost(vector<int> x)
 DESCRIPTION:
-     Obtain the hamming distance between x and y (normalized).
+     Obtain the hamming weight of x.
   ---------------------------------------------------*/
-double LDGM:: rewritingCost(vector<int> x, vector<int> y){
+double LDGM:: rewritingCost(vector<int> x){
   int res = 0;
   for(int i = 0; i < m; i++)
-    if(x[i] != y[i])
+    if(x[i])
       res++;
   return ((double) res)/m;
 }
@@ -304,7 +322,7 @@ RETURN VALUE
 	rate
 -----------------------------------------------*/
  double LDGM:: rate(){
-   return (double)m/n;
+   return (double)n/m;
 }
 /*-----------------------------------------------
 FUNCTION:
@@ -345,11 +363,17 @@ double LDGM:: runExperiment(int experimentNum, double beta, double ee){
     vector<int>x(m);
     for(int i = 0; i < m; i++)
       x[i] = rand()%2;
- 
+
+    /*x[0] = 0; x[1] = 1; x[2] = 1; 
+      x[3] = 0; x[4] = 0; x[5] = 1;*/
 
     fill_n(U.begin(), n, 0);
     fill_n(E.begin(), e + 1, 0.0);
-
+    
+    /*cout<<"x is "<<endl;
+    for(int i = 0; i < m; i++)
+      cout<<x[i]<<" ";
+      cout<<endl;*/
     unordered_set<int>DeletedVariable;
     
     for(int count = 0; count < n; count ++){
@@ -358,23 +382,34 @@ double LDGM:: runExperiment(int experimentNum, double beta, double ee){
 	vector<double>previous(E);
       //for each bit, run a couple of times or equation 23 does not hold. 10 is suggested by Aref.
       for(int i = 0; i < 10; i++){
+	//cout<<"iteration "<<i<<endl;
 	variableUpdate();
+	//cout<<"variable"<<endl;
+	//printE();
+
 	checkUpdateLDGM(DeletedVariable, beta, x);
-        if(Change(previous) >= ee) break;
-      }
-      
-      /*E(Vcon(MDEL,:))=0;*/
-      for(auto it = DeletedVariable.begin(); it != DeletedVariable.end();  it ++){
-	int index = *it;
-	for(int degree = 0; degree < Vcon[0].size(); degree ++){
-	  E[Vcon[index][degree]] = 0.0;
+	//cout<<"check"<<endl;
+	//printE();
+	
+	/*E(Vcon(MDEL,:))=0;*/
+        for(auto it = DeletedVariable.begin(); it != DeletedVariable.end();  it ++){
+	  int index = *it;
+	  for(int degree = 0; degree < Vcon[0].size(); degree ++)
+	    E[Vcon[index][degree]] = 0.0;
 	}
+        //if(Change(previous) >= ee) break;
       }
 
-      Decrimation(DeletedVariable, beta);	
-      }//end for for(...count)
-      res += rewritingCost(x, obtainLDGMCheck(U));
-      if(iteration%1==0) cout<<" So far average rewriting cost is "<<res/(1+iteration)<<", rate is "<<Rate<<"   and theoretical value is "<<cost<<endl;
- }//end for for(... experimentNum ...)
+      int bitIndex = Decrimation(DeletedVariable, beta);
+      updatey(x, bitIndex, U[bitIndex]);
+      
+      /*cout<<"now x is "<<endl;
+      for(int i = 0; i < m; i++)
+	cout<<x[i]<<" ";
+	cout<<endl;*/
+    }//end for for(...count)
+    res += rewritingCost(x);
+    if(iteration%1==0) cout<<" So far average rewriting cost is "<<res/(1+iteration)<<",rate is "<<Rate<<" and theoretical value is "<<cost<<endl;
+  }//end for for(... experimentNum ...)
   return res/experimentNum;
 }

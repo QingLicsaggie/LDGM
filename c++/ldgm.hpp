@@ -39,17 +39,17 @@ class LDGM{
   double Change(vector<double>Previous);
 
   //Decrimation
-  void Decrimation(unordered_set<int>&DeletedVariable, double beta);
+  int Decrimation(unordered_set<int>&DeletedVariable, double beta);
   
 
-  //obtain check nodes of LDGM based on variable nodes of LDGM
-  vector<int> obtainLDGMCheck(vector<int> variable);
+  //update y based on the newly obtain value
+  void updatey(vector<int> &x, int index, int value);
 
   //running experiment now
   double runExperiment(int experimentNum, double beta, double e);
   
   //calculateRewritingCost
-  double rewritingCost(vector<int> x, vector<int> y);
+  double rewritingCost(vector<int> x);
 
   //print out for debugging
   void printE();

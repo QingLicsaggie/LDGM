@@ -1,37 +1,28 @@
 clear; 
 % clc;
 
-% For the LDPC Part
-dv1=3; % Variable-node degree
-dc1=6; % Check-node degree
-
 % For the LDGM Part
 dv2=6; % Variable-node degree
 dc2=3; % Check-node degree
-dv=dv1+dv2;
 %%%%%%%%%%%
 
-rate=(dc2/dv2)*(1-(dv1/dc1)); 
+rate=(dc2/dv2); 
 dist_sha=finverse(@(x)(BinaryEntropy(x)),1-rate,0,0.5);
 fprintf('rate=%f,Shannon distortion is %f\n',rate,dist_sha);
 
-c=4e4;
+c=40000;
 m=dv2*(c); % Block Length / # of check-nodes in LDGM
 n=dc2*(c); % # of variable-nodes
-m1=n*(dv1/dc1); % # of check-nodes in LDPC
+e=dv2*n; % # of edges in LDGM part
 
-e1=dv1*n; % # of edges in LDPC part
-e2=dv2*n; % # of edges in LDGM part
-e=e1+e2; % Total # of edges
 
 % Extra edge to handle irregularity in LDGM part
 E=zeros(1,e); % This is the main object in the sim
 E_check_code=zeros(1,e); % Object to check if the code-bits satisfy LDPC checks
 
-Vcon=[reshape(1:e1,dv1,[])' reshape(e1+1:e,dv2,[])']; % variable-node connections
-Ccon1=reshape(randperm(e1),[],dc1); % check-node connections in LDPC
+Vcon= reshape(1:e, dv2, [])'; % variable-node connections
 
-Ccon2=reshape(e1+randperm(e2),[],dc2);
+Ccon2=reshape(randperm(e),[],dc2);
 
 M=10; % # of source sequences to average the distortion
 
@@ -51,17 +42,12 @@ for j=1:M
     while(count_n > 0)
         for i=1:T
             % Variabel-node update
-            E(Vcon)=repmat(sum(E(Vcon),2),1,dv1+dv2)-E(Vcon);
+	    E(Vcon)=repmat(sum(E(Vcon),2),1,dv2)-E(Vcon);
 
             % Check-node LDGM update
-            E(Vcon(MDEL,dv1+1:dv))=Inf; 
+            E(Vcon(MDEL, :))=Inf; 
             E(Ccon2)=(repmat(((-1).^yr)*tanh(beta),1,dc2)).*GenProd(E(Ccon2),beta);
             E(Ccon2)=(1/beta)*atanh(E(Ccon2));
-            
-            % Check-node LDPC update
-            E(Vcon(MDEL,1:dv1))=repmat(((-1).^UD(MDEL))*Inf,1,dv1);
-            E(Ccon1)=(1/beta)*atanh(GenProd(E(Ccon1),beta));
-            E(E>20)=20; E(E<-20)=-20;
 
             E(Vcon(MDEL,:))=0;
             
